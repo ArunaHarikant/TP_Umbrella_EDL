@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Martian EDL (Entry, Descent, Landing) Simulation for Rover and Aerial Vehicle.">
+    <title>Martian EDL Simulation Interface</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Michroma&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-overlay"></div>
+
+    <header class="mission-header">
+        <div class="logo-container">
+            <div class="mission-logo">MARS-EDL</div>
+            <div class="mission-status pulse" id="global-status">STATUS: STANDBY</div>
+        </div>
+        <nav class="vehicle-selector">
+            <button class="nav-btn active" data-vehicle="rover">ROVER MODULE</button>
+            <button class="nav-btn" data-vehicle="drone">AERIAL VEHICLE</button>
+        </nav>
+        <div class="mission-timer" id="mission-clock">T+00:00:00</div>
+    </header>
+
+    <main class="dashboard">
+        <!-- Left Column: Telemetry -->
+        <aside class="telemetry-panel glass">
+            <h2 class="section-title">LIVE TELEMETRY</h2>
+            <div class="telemetry-grid">
+                <div class="telemetry-item">
+                    <label>ALTITUDE</label>
+                    <div class="value" id="alt-val">125.4 km</div>
+                    <div class="unit">Kilometers</div>
+                </div>
+                <div class="telemetry-item">
+                    <label>VELOCITY</label>
+                    <div class="value" id="vel-val">21,000 km/h</div>
+                    <div class="unit">Mach 17.0</div>
+                </div>
+                <div class="telemetry-item">
+                    <label>TEMP (SHIELD)</label>
+                    <div class="value" id="temp-val">1,500 °C</div>
+                    <div class="unit">Celsius</div>
+                </div>
+                <div class="telemetry-item">
+                    <label>FUEL (%)</label>
+                    <div class="value" id="fuel-val">100.0%</div>
+                    <div class="progress-bar">
+                        <div class="fill" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Column: Simulation View -->
+        <section class="simulation-viewport glass">
+            <div class="phase-indicator" id="current-phase">ENTRY PHASE</div>
+
+            <video id="edl-video" class="simulation-video" muted playsinline>
+                <source src="videoplayback.mp4" type="video/mp4">
+            </video>
+
+            <div class="hud-overlay">
+                <div class="hud-corner top-left"></div>
+                <div class="hud-corner top-right"></div>
+                <div class="hud-corner bottom-left"></div>
+                <div class="hud-corner bottom-right"></div>
+                <div class="scanlines"></div>
+                <div class="vignette"></div>
+            </div>
+
+            <div class="vehicle-container" id="vehicle-view">
+                <svg class="trajectory-svg" viewBox="0 0 800 600" preserveAspectRatio="none">
+                    <path class="trajectory-path" d="M100,500 C200,400 300,300 400,200 C500,100 600,50 700,20"
+                        stroke="var(--accent-primary)" stroke-width="2" fill="none" />
+                    <circle class="trajectory-marker" r="6" fill="var(--accent-secondary)" />
+                </svg>
+                <img src="assets/images/rover.png" alt="Martian Vehicle" class="vehicle-img" id="vehicle-img">
+            </div>
+            <div class="horizon-line"></div>
+        </section>
+
+        <!-- Right Column: System Logs -->
+        <aside class="logs-panel glass">
+            <h2 class="section-title">MISSION LOGS</h2>
+            <div class="log-container" id="log-list">
+                <div class="log-entry system">[SYSTEM] INITIALIZING MISSION READINESS...</div>
+                <div class="log-entry warning">[WARNING] ATMOSPHERIC ENTRY APPROACHING</div>
+            </div>
+            <div class="action-controls">
+                <button class="btn btn-primary" id="start-sim">INITIATE EDL</button>
+                <button class="btn btn-danger" id="abort-sim">ABORT</button>
+            </div>
+        </aside>
+    </main>
+
+    <footer class="edl-tracker">
+        <div class="tracker-track">
+            <div class="tracker-point active" data-phase="CRUISE"></div>
+            <div class="tracker-point" data-phase="ENTRY"></div>
+            <div class="tracker-point" data-phase="AERO"></div>
+            <div class="tracker-point" data-phase="CHUTE"></div>
+            <div class="tracker-point" data-phase="SHIELD"></div>
+            <div class="tracker-point" data-phase="RADAR"></div>
+            <div class="tracker-point" data-phase="SHELL"></div>
+            <div class="tracker-point" data-phase="DESC"></div>
+            <div class="tracker-point" data-phase="CRANE"></div>
+            <div class="tracker-point" data-phase="ROVER"></div>
+            <div class="tracker-point" data-phase="DEPLOY"></div>
+            <div class="tracker-point" data-phase="TOUCH"></div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+
+</html>

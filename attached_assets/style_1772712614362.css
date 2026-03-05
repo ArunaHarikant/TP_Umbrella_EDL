@@ -1,0 +1,380 @@
+:root {
+    --bg-color: #05050a;
+    --accent-primary: #ff4d00;
+    --accent-secondary: #00f2ff;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-primary: #e0e0e0;
+    --text-secondary: #aaaaaa;
+    --danger: #ff0033;
+    --success: #00ff66;
+    --font-main: 'Inter', sans-serif;
+    --font-heading: 'Michroma', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-color);
+    background-image: url('assets/images/mars-surface.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    overflow: hidden;
+    height: 100vh;
+}
+
+.background-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, rgba(5, 5, 10, 0.4) 0%, rgba(5, 5, 10, 0.9) 100%);
+    z-index: -1;
+}
+
+/* Glassmorphism Logic */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Mission Header */
+.mission-header {
+    height: 80px;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 40px;
+    border-bottom: 2px solid var(--accent-primary);
+    box-shadow: 0 5px 25px rgba(255, 77, 0, 0.2);
+}
+
+.mission-logo {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    color: var(--accent-primary);
+    letter-spacing: 2px;
+}
+
+.mission-status {
+    font-size: 0.75rem;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.mission-timer {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    color: var(--accent-secondary);
+    text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+}
+
+.nav-btn {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    padding: 10px 20px;
+    margin: 0 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+}
+
+.nav-btn.active {
+    border-color: var(--accent-secondary);
+    color: var(--accent-secondary);
+    background: rgba(0, 242, 255, 0.1);
+}
+
+/* Dashboard Layout */
+.dashboard {
+    display: grid;
+    grid-template-columns: 350px 1fr 350px;
+    gap: 20px;
+    padding: 20px;
+    height: calc(100vh - 160px);
+}
+
+.section-title {
+    font-family: var(--font-heading);
+    font-size: 0.9rem;
+    color: var(--accent-primary);
+    margin-bottom: 20px;
+    border-left: 3px solid var(--accent-primary);
+    padding-left: 10px;
+}
+
+/* Telemetry Grid */
+.telemetry-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.telemetry-item label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.telemetry-item .value {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    color: #fff;
+}
+
+.telemetry-item .unit {
+    font-size: 0.7rem;
+    color: var(--accent-secondary);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #333;
+    margin-top: 5px;
+}
+
+.progress-bar .fill {
+    height: 100%;
+    background: var(--accent-secondary);
+    transition: width 0.3s ease;
+}
+
+/* Simulation Viewport */
+.simulation-viewport {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.phase-indicator {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-heading);
+    color: var(--accent-primary);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 5px 20px;
+    border: 1px solid var(--accent-primary);
+    border-radius: 20px;
+}
+
+.trajectory-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.trajectory-path {
+    stroke: var(--accent-primary);
+    stroke-width: 2;
+    fill: none;
+}
+
+.trajectory-marker {
+    fill: var(--accent-secondary);
+    r: 6;
+    filter: drop-shadow(0 0 8px var(--accent-secondary));
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 20px var(--accent-secondary);
+}
+
+.trajectory-marker-pulse {
+    animation: marker-pulse 2s infinite;
+}
+
+@keyframes marker-pulse {
+    0% {
+        r: 6;
+        opacity: 1;
+    }
+
+    50% {
+        r: 10;
+        opacity: 0.5;
+    }
+
+    100% {
+        r: 6;
+        opacity: 1;
+    }
+}
+
+
+.vehicle-img {
+    width: 250px;
+    filter: drop-shadow(0 0 20px rgba(0, 242, 255, 0.3));
+    animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(0deg);
+    }
+
+    50% {
+        transform: translateY(-20px) rotate(2deg);
+    }
+}
+
+.horizon-line {
+    position: absolute;
+    bottom: 40px;
+    width: 80%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 77, 0, 0.5), transparent);
+}
+
+/* Mission Logs */
+.log-container {
+    height: 350px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.log-entry.system {
+    color: var(--accent-secondary);
+}
+
+.log-entry.warning {
+    color: var(--danger);
+    box-shadow: inset 0 0 5px var(--danger);
+}
+
+/* Control Panel */
+.action-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.btn-primary {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+
+.btn:hover {
+    filter: brightness(1.2);
+    transform: scale(1.02);
+}
+
+/* Footer Tracker */
+.edl-tracker {
+    height: 80px;
+    background: rgba(0, 0, 0, 0.9);
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 100px;
+}
+
+.tracker-track {
+    width: 100%;
+    height: 4px;
+    background: #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+.tracker-point {
+    width: 20px;
+    height: 20px;
+    background: #222;
+    border: 2px solid #555;
+    border-radius: 50%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.tracker-point::after {
+    content: attr(data-phase);
+    position: absolute;
+    top: 30px;
+    font-size: 0.6rem;
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
+.tracker-point.active {
+    background: var(--accent-primary);
+    border-color: white;
+    box-shadow: 0 0 15px var(--accent-primary);
+}
+
+.tracker-point.active::after {
+    color: white;
+    font-weight: bold;
+}
+
+/* Pulse Animation */
+.pulse {
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        opacity: 0.4;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.4;
+    }
+}
