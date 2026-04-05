@@ -20,7 +20,7 @@ export function Header({ missionTimeFormatted, currentPhase, isActive, isAborted
           )}
         </div>
         <div>
-          <h1 className="text-lg lg:text-xl font-display font-bold text-white tracking-widest text-glow-primary">ARES-IV</h1>
+          <h1 className="text-lg lg:text-xl font-display font-bold text-white tracking-widest text-glow-primary">Team Project Umbrella</h1>
           <p className="text-[10px] text-primary tracking-[0.2em] uppercase font-semibold">EDL Command</p>
         </div>
       </div>

@@ -1,5 +1,6 @@
-import edlVideo from '@assets/videoplayback_1772712614363.mp4';
-import { Crosshair, Focus, ScanLine } from 'lucide-react';
+import edlVideo from '@assets/Untitled_design_1775393203432.mp4';
+import roverImage from '@assets/RoverDesign_1775393284054.jpeg';
+import { Crosshair, ScanLine } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Phase } from '@/hooks/use-simulation';
 
@@ -84,9 +85,13 @@ export function Viewport({ currentPhase, isActive, isAborted }: ViewportProps) {
 
       {!isActive && !isAborted && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4 opacity-50">
-            <Focus className="w-16 h-16 text-muted-foreground animate-pulse" />
-            <div className="text-muted-foreground font-display tracking-widest">SYSTEM STANDBY</div>
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src={roverImage}
+              alt="Rover Design"
+              className="w-56 lg:w-72 object-contain drop-shadow-[0_0_24px_rgba(0,242,255,0.35)] opacity-80"
+            />
+            <div className="text-muted-foreground font-display tracking-widest text-sm">SYSTEM STANDBY</div>
           </div>
         </div>
       )}
