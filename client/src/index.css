@@ -120,6 +120,28 @@
     100% { transform: translateY(100%); }
   }
 
+  .animate-spin-slow {
+    animation: spin 4s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .animate-rover-drive {
+    animation: rover-bob 1.2s ease-in-out infinite;
+  }
+
+  @keyframes rover-bob {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-3px); }
+  }
+
+  .text-glow-destructive {
+    text-shadow: 0 0 10px rgba(255, 0, 51, 0.8);
+  }
+
   .hud-crosshair {
     position: absolute;
     top: 50%;

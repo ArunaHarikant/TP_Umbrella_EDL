@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useCreateLog } from "./use-logs";
 
 export const PHASES = [
-  "CRUISE", "ENTRY", "AERO", "CHUTE", "SHIELD", "RADAR", 
-  "SHELL", "DESC", "CRANE", "ROVER", "DEPLOY", "TOUCH"
+  "CRUISE", "ENTRY", "AERO", "CHUTE", "SHIELD", "RADAR",
+  "SHELL", "AIRBAG", "BOUNCE", "ROVER", "DEPLOY", "TOUCH"
 ] as const;
 
 export type Phase = typeof PHASES[number];
@@ -17,18 +17,18 @@ export interface TelemetryData {
 
 // Target values for the END of each phase
 const PHASE_TARGETS: Record<Phase, TelemetryData> = {
-  CRUISE: { altitude: 125000, velocity: 21000, temperature: -60, fuel: 100 },
-  ENTRY:  { altitude: 120000, velocity: 20500, temperature: 1200, fuel: 98 },
-  AERO:   { altitude: 80000, velocity: 15000, temperature: 2100, fuel: 95 },
-  CHUTE:  { altitude: 11000, velocity: 1500, temperature: 800, fuel: 95 },
-  SHIELD: { altitude: 8000, velocity: 600, temperature: 300, fuel: 95 },
-  RADAR:  { altitude: 5000, velocity: 400, temperature: 150, fuel: 95 },
-  SHELL:  { altitude: 3000, velocity: 300, temperature: 80, fuel: 95 },
-  DESC:   { altitude: 1500, velocity: 250, temperature: 40, fuel: 80 },
-  CRANE:  { altitude: 100, velocity: 50, temperature: 20, fuel: 60 },
-  ROVER:  { altitude: 20, velocity: 10, temperature: 15, fuel: 55 },
-  DEPLOY: { altitude: 5, velocity: 2, temperature: 10, fuel: 50 },
-  TOUCH:  { altitude: 0, velocity: 0, temperature: 5, fuel: 45 },
+  CRUISE: { altitude: 125000, velocity: 21000, temperature: -60,  fuel: 100 },
+  ENTRY:  { altitude: 120000, velocity: 20500, temperature: 1200, fuel: 98  },
+  AERO:   { altitude: 80000,  velocity: 15000, temperature: 2100, fuel: 95  },
+  CHUTE:  { altitude: 11000,  velocity: 1500,  temperature: 800,  fuel: 95  },
+  SHIELD: { altitude: 8000,   velocity: 600,   temperature: 300,  fuel: 95  },
+  RADAR:  { altitude: 5000,   velocity: 400,   temperature: 150,  fuel: 95  },
+  SHELL:  { altitude: 3000,   velocity: 300,   temperature: 80,   fuel: 95  },
+  AIRBAG: { altitude: 800,    velocity: 200,   temperature: 40,   fuel: 90  },
+  BOUNCE: { altitude: 10,     velocity: 60,    temperature: 20,   fuel: 88  },
+  ROVER:  { altitude: 0.5,    velocity: 2,     temperature: 10,   fuel: 85  },
+  DEPLOY: { altitude: 0.1,    velocity: 1,     temperature: 8,    fuel: 82  },
+  TOUCH:  { altitude: 0,      velocity: 0,     temperature: 5,    fuel: 80  },
 };
 
 const TICK_RATE_MS = 100;
@@ -41,9 +41,9 @@ export function useSimulation() {
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const [missionTimeMs, setMissionTimeMs] = useState(0);
   const [localLogs, setLocalLogs] = useState<{ id: number, phase: string, message: string, timestamp: string }[]>([]);
-  
+
   const [telemetry, setTelemetry] = useState<TelemetryData>(PHASE_TARGETS["CRUISE"]);
-  
+
   const createLog = useCreateLog();
   const nextLogId = useRef(1);
 
@@ -54,9 +54,8 @@ export function useSimulation() {
       phase,
       message,
       timestamp
-    }, ...prev].slice(0, 50)); // Keep last 50 logs in UI
-    
-    // Also sync to backend
+    }, ...prev].slice(0, 50));
+
     createLog.mutate({ phase, message });
   }, [createLog]);
 
@@ -66,36 +65,31 @@ export function useSimulation() {
     const interval = setInterval(() => {
       setMissionTimeMs(prev => {
         const nextMs = prev + TICK_RATE_MS;
-        
-        // Calculate new phase
+
         const phaseFloat = nextMs / (SECONDS_PER_PHASE * 1000);
         const nextPhaseIdx = Math.min(Math.floor(phaseFloat), PHASES.length - 1);
-        
+
         if (nextPhaseIdx !== currentPhaseIndex && nextPhaseIdx < PHASES.length) {
           setCurrentPhaseIndex(nextPhaseIdx);
           addLog(PHASES[nextPhaseIdx], `Entered ${PHASES[nextPhaseIdx]} phase.`);
         }
 
-        // Reached the end
         if (phaseFloat >= PHASES.length) {
           setIsActive(false);
           addLog("TOUCH", "Touchdown confirmed. EDL Complete.");
           return prev;
         }
 
-        // Interpolate telemetry
         const startPhaseIdx = Math.max(0, nextPhaseIdx - 1);
         const startTarget = PHASE_TARGETS[PHASES[startPhaseIdx]];
         const endTarget = PHASE_TARGETS[PHASES[nextPhaseIdx]];
-        
-        // Progress within current phase (0.0 to 1.0)
         const phaseProgress = phaseFloat % 1;
 
         setTelemetry({
-          altitude: startTarget.altitude + (endTarget.altitude - startTarget.altitude) * phaseProgress,
-          velocity: startTarget.velocity + (endTarget.velocity - startTarget.velocity) * phaseProgress,
+          altitude:    startTarget.altitude    + (endTarget.altitude    - startTarget.altitude)    * phaseProgress,
+          velocity:    startTarget.velocity    + (endTarget.velocity    - startTarget.velocity)    * phaseProgress,
           temperature: startTarget.temperature + (endTarget.temperature - startTarget.temperature) * phaseProgress,
-          fuel: startTarget.fuel + (endTarget.fuel - startTarget.fuel) * phaseProgress,
+          fuel:        startTarget.fuel        + (endTarget.fuel        - startTarget.fuel)        * phaseProgress,
         });
 
         return nextMs;
@@ -132,7 +126,6 @@ export function useSimulation() {
     setLocalLogs([]);
   };
 
-  // Format mission time as +HH:MM:SS
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
