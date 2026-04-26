@@ -34,7 +34,7 @@ jobs:
         env:
           # Ensures Vite assets work on GitHub Pages project sites: /<repo-name>/
           VITE_BASE: /${{ github.event.repository.name }}/
-        run: npm run build
+        run: npx vite build
 
       - name: SPA fallback (optional)
         run: |
