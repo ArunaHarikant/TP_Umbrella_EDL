@@ -4,6 +4,9 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig({
+  // For GitHub Pages project sites, assets must be served from `/<repo-name>/`.
+  // The workflow sets `VITE_BASE=/<repo-name>/` automatically.
+  base: process.env.VITE_BASE ?? "/",
   plugins: [
     react(),
     runtimeErrorOverlay(),
