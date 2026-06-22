@@ -138,27 +138,6 @@
     50%       { transform: translateY(-3px); }
   }
 
-  /* Spinning rover wheels — rotate about each wheel's own centre */
-  .rover-wheel {
-    transform-box: fill-box;
-    transform-origin: center;
-  }
-  .rover-wheel.spin {
-    animation: wheel-spin 0.9s linear infinite;
-  }
-  @keyframes wheel-spin {
-    to { transform: rotate(360deg); }
-  }
-
-  /* Lander deploy ramp — fades in only while the rover rolls out */
-  .rover-ramp {
-    opacity: 0;
-    transition: opacity 0.8s ease-out;
-  }
-  .rover-ramp.show {
-    opacity: 1;
-  }
-
   .text-glow-destructive {
     text-shadow: 0 0 10px rgba(255, 0, 51, 0.8);
   }

@@ -1,178 +1,235 @@
-import { clsx } from "clsx";
+import { useEffect, useRef } from "react";
+import * as THREE from "three";
 
 interface Rover3DProps {
   visible: boolean;
   phase: string;
 }
 
-/* A single rocker-bogie wheel: machined-metal rim, grouser tread fins,
-   bolt-circle hubcap. The spinning parts live in their own <g> so they
-   rotate about their own centre; the light sheen stays fixed on top. */
-function Wheel({ cx, cy, r, far, spin }: { cx: number; cy: number; r: number; far?: boolean; spin?: boolean }) {
-  const fins = [];
-  const N = 16;
-  for (let i = 0; i < N; i++) {
-    const a = (i / N) * Math.PI * 2;
-    fins.push(
-      <line
-        key={i}
-        x1={cx + (r - 4) * Math.cos(a)}
-        y1={cy + (r - 4) * Math.sin(a)}
-        x2={cx + r * Math.cos(a)}
-        y2={cy + r * Math.sin(a)}
-        stroke="#2c2f33"
-        strokeWidth={far ? 1.5 : 2.5}
-        strokeLinecap="round"
-      />
-    );
+/* ============================================================
+   HADES rover — procedural Three.js model that rolls out of the
+   lander after touchdown. Gold/brass body, flat solar panel,
+   six rocker-bogie wheels with grouser treads + bolt-circle
+   hubcaps, silver articulated suspension. Rendered on a
+   transparent canvas overlaid on the Mars feed.
+   ============================================================ */
+function buildRover() {
+  const rover = new THREE.Group();
+
+  const gold = new THREE.MeshStandardMaterial({ color: 0xcfa23a, roughness: 0.42, metalness: 0.72 });
+  const goldLight = new THREE.MeshStandardMaterial({ color: 0xe6c25a, roughness: 0.38, metalness: 0.7 });
+  const silver = new THREE.MeshStandardMaterial({ color: 0xcdd2d8, roughness: 0.35, metalness: 0.9 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc2c6cc, roughness: 0.28, metalness: 0.95 });
+  const grouserMat = new THREE.MeshStandardMaterial({ color: 0x8f969f, roughness: 0.45, metalness: 0.85 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: 0.6, metalness: 0.5 });
+
+  // ---- Solar panel texture (dark photovoltaic grid) ----
+  const cv = document.createElement("canvas");
+  cv.width = 256; cv.height = 192;
+  const cx = cv.getContext("2d")!;
+  cx.fillStyle = "#0a1430"; cx.fillRect(0, 0, 256, 192);
+  const cols = 8, rows = 6, gap = 2, cw = 256 / cols, ch = 192 / rows;
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+    const g = cx.createLinearGradient(i * cw, j * ch, i * cw + cw, j * ch + ch);
+    g.addColorStop(0, "#16285f"); g.addColorStop(0.5, "#0c1838"); g.addColorStop(1, "#1c3274");
+    cx.fillStyle = g; cx.fillRect(i * cw + gap, j * ch + gap, cw - gap * 2, ch - gap * 2);
   }
-  const bolts = [];
-  for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * Math.PI * 2;
-    bolts.push(
-      <circle key={k} cx={cx + r * 0.42 * Math.cos(a)} cy={cy + r * 0.42 * Math.sin(a)} r={far ? 1.3 : 2} fill="#4a4f56" />
-    );
+  const solarTex = new THREE.CanvasTexture(cv);
+  solarTex.colorSpace = THREE.SRGBColorSpace;
+  const solarMat = new THREE.MeshStandardMaterial({ map: solarTex, roughness: 0.28, metalness: 0.6, emissive: 0x0a1840, emissiveIntensity: 0.08 });
+
+  // ---- Chassis (gold body box) ----
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.7, 1.8), gold);
+  body.position.y = 0.2; body.castShadow = true; rover.add(body);
+  // foil side panels
+  const f1 = new THREE.Mesh(new THREE.BoxGeometry(2.62, 0.62, 0.04), goldLight); f1.position.set(0, 0.2, 0.91); rover.add(f1);
+  const f2 = f1.clone(); f2.position.z = -0.91; rover.add(f2);
+  // warm electronics box (one end)
+  const web = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 1.4), goldLight); web.position.set(-1.28, 0.18, 0); rover.add(web);
+  // mission emblem
+  const emblem = new THREE.Mesh(new THREE.CircleGeometry(0.2, 32),
+    new THREE.MeshStandardMaterial({ color: 0xb5471f, roughness: 0.5, metalness: 0.3 }));
+  emblem.position.set(0.8, 0.22, 0.92); rover.add(emblem);
+
+  // ---- Flat solar panel on top ----
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.04, 2.26), silver);
+  frame.position.set(0, 0.6, 0); frame.castShadow = true; rover.add(frame);
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(2.92, 0.05, 2.18), solarMat);
+  panel.position.set(0, 0.625, 0); panel.castShadow = true; rover.add(panel);
+
+  // ---- Wheel factory: drum + grouser fins + bolt-circle hubcap ----
+  const wheels: THREE.Object3D[] = [];
+  function makeWheel() {
+    const g = new THREE.Group();
+    const R = 0.36, W = 0.3;
+    // solid closed drum so the wheel reads as a filled metal cylinder
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(R, R, W, 40), steel);
+    drum.rotation.z = Math.PI / 2; drum.castShadow = true; g.add(drum);
+    // dense, low-profile grouser treads around the rim
+    const N = 44;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(W * 0.96, 0.022, 0.04), grouserMat);
+      fin.position.set(0, Math.sin(a) * (R + 0.006), Math.cos(a) * (R + 0.006));
+      fin.rotation.x = a; drum.add(fin);
+    }
+    function cap(sign: number) {
+      const grp = new THREE.Group(); grp.position.x = sign * (W / 2 + 0.006); grp.rotation.y = Math.PI / 2;
+      grp.add(new THREE.Mesh(new THREE.CircleGeometry(R * 0.92, 32),
+        new THREE.MeshStandardMaterial({ color: 0xd6dadf, roughness: 0.22, metalness: 0.96, side: THREE.DoubleSide })));
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 16), steel);
+      hub.rotation.x = Math.PI / 2; hub.position.z = 0.02 * sign; grp.add(hub);
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * Math.PI * 2;
+        const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.03, 6), darkMat);
+        bolt.rotation.x = Math.PI / 2; bolt.position.set(Math.cos(a) * 0.14, Math.sin(a) * 0.14, 0.02 * sign); grp.add(bolt);
+      }
+      return grp;
+    }
+    drum.add(cap(1)); drum.add(cap(-1));
+    (g.userData as any).drum = drum;
+    wheels.push(g);
+    return g;
   }
-  return (
-    <>
-      <g className={clsx("rover-wheel", spin && "spin")}>
-        <circle cx={cx} cy={cy} r={r} fill={far ? "url(#wheelFar)" : "url(#wheelNear)"} stroke="#3a3e44" strokeWidth="2" />
-        {fins}
-        <circle cx={cx} cy={cy} r={r * 0.62} fill="url(#hub)" stroke="#5c626b" strokeWidth="1.5" />
-        <circle cx={cx} cy={cy} r={r * 0.5} fill="none" stroke="#9aa0a8" strokeWidth="1" />
-        {bolts}
-        <circle cx={cx} cy={cy} r={r * 0.16} fill="#5c626b" />
-      </g>
-      {/* fixed light sheen (outside the spinning group) */}
-      <circle cx={cx - r * 0.32} cy={cy - r * 0.34} r={r * 0.2} fill="#ffffff" opacity={far ? 0.12 : 0.28} />
-    </>
-  );
+
+  // ---- Rocker-bogie suspension (one per side) ----
+  function makeSide(sign: number) {
+    const side = new THREE.Group(); side.position.set(0, 0, sign * 1.05);
+    const rb = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.08), silver); rb.position.set(0.1, 0, 0); side.add(rb);
+    const farm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.08), silver); farm.position.set(1.2, -0.25, 0); side.add(farm);
+    const fw = makeWheel(); fw.position.set(1.2, -0.5, 0); side.add(fw);
+    const bogie = new THREE.Group(); bogie.position.set(-0.9, -0.15, 0); side.add(bogie);
+    const bb = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.07), silver); bogie.add(bb);
+    const ml = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.35, 0.06), silver); ml.position.set(-0.5, -0.17, 0); bogie.add(ml);
+    const mw = makeWheel(); mw.position.set(-0.5, -0.35, 0); bogie.add(mw);
+    const mr = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.35, 0.06), silver); mr.position.set(0.5, -0.17, 0); bogie.add(mr);
+    const rw = makeWheel(); rw.position.set(0.5, -0.35, 0); bogie.add(rw);
+    return side;
+  }
+  rover.add(makeSide(1)); rover.add(makeSide(-1));
+
+  return { rover, wheels };
 }
 
 export function Rover3D({ visible, phase }: Rover3DProps) {
-  const isDeploying = phase === "ROVER";   // rolling out of the lander
-  const isDriving = phase === "DEPLOY";    // mobility deploy / driving
-  const wheelsTurning = isDeploying || isDriving;
+  const mountRef = useRef<HTMLDivElement>(null);
+  const stateRef = useRef({ visible, phase });
+  stateRef.current = { visible, phase };
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    renderer.setClearColor(0x000000, 0);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    mount.appendChild(renderer.domElement);
+    renderer.domElement.style.width = "100%";
+    renderer.domElement.style.height = "100%";
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+    camera.position.set(4.6, 1.7, 6.9);
+    camera.lookAt(0, 0.2, 0);
+
+    // Lights — warm Mars key + cool fill
+    scene.add(new THREE.HemisphereLight(0xffe6cc, 0x442218, 1.0));
+    scene.add(new THREE.AmbientLight(0x6a4a3a, 0.5));
+    const sun = new THREE.DirectionalLight(0xffd9b0, 1.6);
+    sun.position.set(-4, 6, 5); sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.near = 1; sun.shadow.camera.far = 30;
+    sun.shadow.camera.left = -6; sun.shadow.camera.right = 6;
+    sun.shadow.camera.top = 6; sun.shadow.camera.bottom = -6;
+    sun.shadow.bias = -0.0004;
+    scene.add(sun);
+
+    const { rover, wheels } = buildRover();
+    scene.add(rover);
+
+    // Soft contact shadow (radial gradient sprite under the rover)
+    const scv = document.createElement("canvas"); scv.width = scv.height = 128;
+    const sctx = scv.getContext("2d")!;
+    const grd = sctx.createRadialGradient(64, 64, 4, 64, 64, 60);
+    grd.addColorStop(0, "rgba(0,0,0,0.5)"); grd.addColorStop(1, "rgba(0,0,0,0)");
+    sctx.fillStyle = grd; sctx.fillRect(0, 0, 128, 128);
+    const shadowTex = new THREE.CanvasTexture(scv);
+    const contact = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 2.4),
+      new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+    contact.rotation.x = -Math.PI / 2; contact.position.y = -0.86;
+    rover.add(contact);
+
+    const OFFSCREEN_X = 9;
+    rover.position.set(OFFSCREEN_X, 0, 0);
+    let wheelAngle = 0;
+    let lastX = OFFSCREEN_X;
+
+    const resize = () => {
+      const w = mount.clientWidth, h = mount.clientHeight;
+      if (w === 0 || h === 0) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h; camera.updateProjectionMatrix();
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(mount);
+
+    let raf = 0;
+    let last = performance.now();
+    let elapsed = 0;
+    const animate = () => {
+      raf = requestAnimationFrame(animate);
+      const now = performance.now();
+      const dt = Math.min((now - last) / 1000, 0.05); last = now; elapsed += dt;
+      const { visible: vis, phase: ph } = stateRef.current;
+
+      // Roll in from the right after landing; retract off-screen when hidden.
+      const targetX = vis ? 0 : OFFSCREEN_X;
+      rover.position.x += (targetX - rover.position.x) * Math.min(1, dt * 2.2);
+
+      // Wheel rotation: roll with travel + steady creep during deploy.
+      const dx = rover.position.x - lastX; lastX = rover.position.x;
+      wheelAngle += -dx / 0.36;
+      if (ph === "DEPLOY" || ph === "ROVER") wheelAngle += dt * 1.6;
+      wheels.forEach((w) => { (w.userData as any).drum.rotation.x = wheelAngle; });
+
+      // Gentle settle/bob
+      rover.rotation.z = Math.sin(elapsed * 1.2) * 0.012;
+      rover.visible = rover.position.x < OFFSCREEN_X - 0.05;
+
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      renderer.dispose();
+      scene.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.geometry) m.geometry.dispose();
+        const mat = m.material as THREE.Material | THREE.Material[] | undefined;
+        if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
+        else if (mat) mat.dispose();
+      });
+      if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
+    };
+  }, []);
 
   return (
-    <div
-      className={clsx(
-        "absolute bottom-16 left-1/2 transition-all ease-out pointer-events-none",
-        visible ? "opacity-100 translate-x-[-50%] translate-y-0" : "opacity-0 translate-x-[80%] translate-y-6"
+    <div className="absolute inset-0 pointer-events-none">
+      <div ref={mountRef} className="absolute inset-0" />
+      {visible && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 text-center">
+          <span className="text-xs font-display tracking-widest text-secondary opacity-80 bg-black/30 px-2 py-0.5 rounded">
+            {phase === "ROVER" ? "ROVER ROLLOUT" : phase === "DEPLOY" ? "MOBILITY DEPLOY" : "SURFACE OPS"}
+          </span>
+        </div>
       )}
-      style={{ transitionDuration: "2200ms", filter: "drop-shadow(0 10px 14px rgba(0,0,0,0.45))" }}
-    >
-      <svg
-        viewBox="0 0 360 180"
-        width="300"
-        height="150"
-        xmlns="http://www.w3.org/2000/svg"
-        className={clsx(isDriving && "animate-rover-drive")}
-      >
-        <defs>
-          <linearGradient id="goldBody" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#f3cd63" />
-            <stop offset="0.45" stopColor="#cda12f" />
-            <stop offset="1" stopColor="#8a6a1a" />
-          </linearGradient>
-          <linearGradient id="goldFoil" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#e8c25a" />
-            <stop offset="0.5" stopColor="#b8902a" />
-            <stop offset="1" stopColor="#dcb44e" />
-          </linearGradient>
-          <linearGradient id="solar" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#34499c" />
-            <stop offset="1" stopColor="#0f1840" />
-          </linearGradient>
-          <radialGradient id="wheelNear" cx="0.38" cy="0.32" r="0.78">
-            <stop offset="0" stopColor="#f4f6f9" />
-            <stop offset="0.4" stopColor="#bdc3cb" />
-            <stop offset="1" stopColor="#585e67" />
-          </radialGradient>
-          <radialGradient id="wheelFar" cx="0.38" cy="0.32" r="0.78">
-            <stop offset="0" stopColor="#c6cad0" />
-            <stop offset="0.5" stopColor="#868c94" />
-            <stop offset="1" stopColor="#3a3f45" />
-          </radialGradient>
-          <radialGradient id="hub" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stopColor="#eaedf1" />
-            <stop offset="1" stopColor="#787e86" />
-          </radialGradient>
-          <radialGradient id="emblem" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stopColor="#ffd27a" />
-            <stop offset="0.6" stopColor="#c46a2a" />
-            <stop offset="1" stopColor="#7a3a18" />
-          </radialGradient>
-        </defs>
-
-        {/* Lander deploy ramp the rover rolls out from (right side, fades after rollout) */}
-        <g className={clsx("rover-ramp", isDeploying ? "show" : "")}>
-          <polygon points="250,148 360,118 360,150 250,150" fill="#00f2ff" opacity="0.12" />
-          <line x1="250" y1="148" x2="360" y2="118" stroke="#00f2ff" strokeWidth="2" opacity="0.45" />
-        </g>
-
-        {/* ground contact shadow */}
-        <ellipse cx="170" cy="152" rx="150" ry="9" fill="#000000" opacity="0.28" />
-
-        {/* === Far (right-side) wheels — smaller, recede behind body === */}
-        <Wheel cx={96} cy={128} r={18} far spin={wheelsTurning} />
-        <Wheel cx={190} cy={128} r={18} far spin={wheelsTurning} />
-        <Wheel cx={284} cy={128} r={18} far spin={wheelsTurning} />
-
-        {/* === Rocker-bogie suspension (silver articulated arms) === */}
-        <g stroke="#cfd4da" strokeLinecap="round" fill="none">
-          <line x1="170" y1="100" x2="170" y2="106" strokeWidth="6" />
-          <line x1="152" y1="100" x2="66" y2="130" strokeWidth="6" />
-          <line x1="152" y1="100" x2="208" y2="108" strokeWidth="6" />
-          <line x1="208" y1="108" x2="162" y2="130" strokeWidth="5" />
-          <line x1="208" y1="108" x2="258" y2="130" strokeWidth="5" />
-        </g>
-        <circle cx="170" cy="100" r="6" fill="#aeb4bc" stroke="#7d838b" strokeWidth="1.5" />
-        <circle cx="208" cy="108" r="4.5" fill="#aeb4bc" stroke="#7d838b" strokeWidth="1.5" />
-
-        {/* === Main gold / brass body box (HADES warm-electronics chassis) === */}
-        <rect x="78" y="56" width="184" height="46" rx="4" fill="url(#goldBody)" stroke="#6e540f" strokeWidth="1.5" />
-        {/* foil seams */}
-        <rect x="78" y="56" width="184" height="11" rx="4" fill="#ffffff" opacity="0.16" />
-        <line x1="120" y1="56" x2="120" y2="102" stroke="#9a7a1e" strokeWidth="1" opacity="0.5" />
-        <line x1="206" y1="56" x2="206" y2="102" stroke="#9a7a1e" strokeWidth="1" opacity="0.5" />
-        {/* warm electronics box (left end) */}
-        <rect x="80" y="70" width="22" height="22" rx="2" fill="url(#goldFoil)" stroke="#6e540f" strokeWidth="1" />
-        {/* mission emblem */}
-        <circle cx="150" cy="80" r="12" fill="url(#emblem)" stroke="#f0d28a" strokeWidth="1.5" />
-        <circle cx="150" cy="80" r="5" fill="#3a1d0e" opacity="0.7" />
-
-        {/* === Flat solar panel on top === */}
-        <g transform="rotate(-4 170 47)">
-          <rect x="62" y="40" width="216" height="16" rx="2" fill="url(#solar)" stroke="#d9b24c" strokeWidth="2" />
-          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-            <line key={i} x1={62 + i * 19.6} y1="40" x2={62 + i * 19.6} y2="56" stroke="#1c2a66" strokeWidth="1" opacity="0.8" />
-          ))}
-          <line x1="62" y1="48" x2="278" y2="48" stroke="#1c2a66" strokeWidth="1" opacity="0.8" />
-          <rect x="62" y="40" width="216" height="5" rx="2" fill="#ffffff" opacity="0.1" />
-        </g>
-
-        {/* === Near (left-side) wheels — larger, in front === */}
-        <Wheel cx={66} cy={132} r={24} spin={wheelsTurning} />
-        <Wheel cx={162} cy={132} r={24} spin={wheelsTurning} />
-        <Wheel cx={258} cy={132} r={24} spin={wheelsTurning} />
-
-        {/* Dust kicked up behind the wheels while moving */}
-        {wheelsTurning && (
-          <>
-            <circle cx="296" cy="146" r="3" fill="#d99a5a" opacity="0.55" className="animate-ping" />
-            <circle cx="312" cy="142" r="2" fill="#c87941" opacity="0.4" className="animate-ping" />
-            <circle cx="284" cy="148" r="2.2" fill="#e0a868" opacity="0.5" />
-          </>
-        )}
-      </svg>
-
-      {/* Phase label */}
-      <div className="text-center mt-1">
-        <span className="text-xs font-display tracking-widest text-secondary opacity-80">
-          {phase === "ROVER" ? "ROVER ROLLOUT" : phase === "DEPLOY" ? "MOBILITY DEPLOY" : "SURFACE OPS"}
-        </span>
-      </div>
     </div>
   );
 }
