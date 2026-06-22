@@ -5,158 +5,164 @@ interface Rover3DProps {
   phase: string;
 }
 
+/* A single rocker-bogie wheel: machined-metal rim, grouser tread fins,
+   bolt-circle hubcap. The spinning parts live in their own <g> so they
+   rotate about their own centre; the light sheen stays fixed on top. */
+function Wheel({ cx, cy, r, far, spin }: { cx: number; cy: number; r: number; far?: boolean; spin?: boolean }) {
+  const fins = [];
+  const N = 16;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    fins.push(
+      <line
+        key={i}
+        x1={cx + (r - 4) * Math.cos(a)}
+        y1={cy + (r - 4) * Math.sin(a)}
+        x2={cx + r * Math.cos(a)}
+        y2={cy + r * Math.sin(a)}
+        stroke="#2c2f33"
+        strokeWidth={far ? 1.5 : 2.5}
+        strokeLinecap="round"
+      />
+    );
+  }
+  const bolts = [];
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2;
+    bolts.push(
+      <circle key={k} cx={cx + r * 0.42 * Math.cos(a)} cy={cy + r * 0.42 * Math.sin(a)} r={far ? 1.3 : 2} fill="#4a4f56" />
+    );
+  }
+  return (
+    <>
+      <g className={clsx("rover-wheel", spin && "spin")}>
+        <circle cx={cx} cy={cy} r={r} fill={far ? "url(#wheelFar)" : "url(#wheelNear)"} stroke="#3a3e44" strokeWidth="2" />
+        {fins}
+        <circle cx={cx} cy={cy} r={r * 0.62} fill="url(#hub)" stroke="#5c626b" strokeWidth="1.5" />
+        <circle cx={cx} cy={cy} r={r * 0.5} fill="none" stroke="#9aa0a8" strokeWidth="1" />
+        {bolts}
+        <circle cx={cx} cy={cy} r={r * 0.16} fill="#5c626b" />
+      </g>
+      {/* fixed light sheen (outside the spinning group) */}
+      <circle cx={cx - r * 0.32} cy={cy - r * 0.34} r={r * 0.2} fill="#ffffff" opacity={far ? 0.12 : 0.28} />
+    </>
+  );
+}
+
 export function Rover3D({ visible, phase }: Rover3DProps) {
-  const isDeploying = phase === "ROVER";
-  const isDriving = phase === "DEPLOY" || phase === "TOUCH";
+  const isDeploying = phase === "ROVER";   // rolling out of the lander
+  const isDriving = phase === "DEPLOY";    // mobility deploy / driving
+  const wheelsTurning = isDeploying || isDriving;
 
   return (
     <div
       className={clsx(
-        "absolute bottom-16 left-1/2 transition-all duration-[2000ms] ease-out pointer-events-none",
-        visible ? "opacity-100 translate-x-[-50%] translate-y-0" : "opacity-0 translate-x-[60%] translate-y-8"
+        "absolute bottom-16 left-1/2 transition-all ease-out pointer-events-none",
+        visible ? "opacity-100 translate-x-[-50%] translate-y-0" : "opacity-0 translate-x-[80%] translate-y-6"
       )}
-      style={{ filter: "drop-shadow(0 0 18px rgba(0,242,255,0.5))" }}
+      style={{ transitionDuration: "2200ms", filter: "drop-shadow(0 10px 14px rgba(0,0,0,0.45))" }}
     >
       <svg
-        viewBox="0 0 340 160"
-        width="280"
-        height="130"
+        viewBox="0 0 360 180"
+        width="300"
+        height="150"
         xmlns="http://www.w3.org/2000/svg"
         className={clsx(isDriving && "animate-rover-drive")}
       >
-        {/* === SUSPENSION ARMS (rocker-bogie) === */}
-        {/* Left rocker arm */}
-        <line x1="80" y1="100" x2="130" y2="85" stroke="#d0d0d0" strokeWidth="5" strokeLinecap="round" />
-        <line x1="130" y1="85" x2="160" y2="100" stroke="#d0d0d0" strokeWidth="4" strokeLinecap="round" />
-        {/* Left bogie front */}
-        <line x1="80" y1="100" x2="50" y2="112" stroke="#d0d0d0" strokeWidth="5" strokeLinecap="round" />
-        <line x1="50" y1="112" x2="20" y2="100" stroke="#d0d0d0" strokeWidth="4" strokeLinecap="round" />
+        <defs>
+          <linearGradient id="goldBody" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#f3cd63" />
+            <stop offset="0.45" stopColor="#cda12f" />
+            <stop offset="1" stopColor="#8a6a1a" />
+          </linearGradient>
+          <linearGradient id="goldFoil" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#e8c25a" />
+            <stop offset="0.5" stopColor="#b8902a" />
+            <stop offset="1" stopColor="#dcb44e" />
+          </linearGradient>
+          <linearGradient id="solar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#34499c" />
+            <stop offset="1" stopColor="#0f1840" />
+          </linearGradient>
+          <radialGradient id="wheelNear" cx="0.38" cy="0.32" r="0.78">
+            <stop offset="0" stopColor="#f4f6f9" />
+            <stop offset="0.4" stopColor="#bdc3cb" />
+            <stop offset="1" stopColor="#585e67" />
+          </radialGradient>
+          <radialGradient id="wheelFar" cx="0.38" cy="0.32" r="0.78">
+            <stop offset="0" stopColor="#c6cad0" />
+            <stop offset="0.5" stopColor="#868c94" />
+            <stop offset="1" stopColor="#3a3f45" />
+          </radialGradient>
+          <radialGradient id="hub" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stopColor="#eaedf1" />
+            <stop offset="1" stopColor="#787e86" />
+          </radialGradient>
+          <radialGradient id="emblem" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stopColor="#ffd27a" />
+            <stop offset="0.6" stopColor="#c46a2a" />
+            <stop offset="1" stopColor="#7a3a18" />
+          </radialGradient>
+        </defs>
 
-        {/* Right rocker arm */}
-        <line x1="260" y1="100" x2="210" y2="85" stroke="#d0d0d0" strokeWidth="5" strokeLinecap="round" />
-        <line x1="210" y1="85" x2="180" y2="100" stroke="#d0d0d0" strokeWidth="4" strokeLinecap="round" />
-        {/* Right bogie front */}
-        <line x1="260" y1="100" x2="290" y2="112" stroke="#d0d0d0" strokeWidth="5" strokeLinecap="round" />
-        <line x1="290" y1="112" x2="320" y2="100" stroke="#d0d0d0" strokeWidth="4" strokeLinecap="round" />
-
-        {/* Center body mount arms */}
-        <line x1="130" y1="85" x2="130" y2="68" stroke="#b8b8b8" strokeWidth="4" strokeLinecap="round" />
-        <line x1="210" y1="85" x2="210" y2="68" stroke="#b8b8b8" strokeWidth="4" strokeLinecap="round" />
-
-        {/* === MAIN BODY === */}
-        {/* Body shadow/depth */}
-        <rect x="118" y="42" width="106" height="50" rx="3" fill="#4a3e1a" opacity="0.6" transform="translate(4,4)" />
-        {/* Main gold chassis */}
-        <rect x="118" y="42" width="106" height="50" rx="3" fill="#b8952a" />
-        {/* Body highlight */}
-        <rect x="118" y="42" width="106" height="12" rx="3" fill="#d4aa32" opacity="0.7" />
-        {/* Body panel lines */}
-        <line x1="170" y1="42" x2="170" y2="92" stroke="#9a7a1e" strokeWidth="1.5" opacity="0.6" />
-        <rect x="126" y="50" width="20" height="16" rx="2" fill="#1a1a2e" opacity="0.8" />
-        <rect x="196" y="50" width="20" height="16" rx="2" fill="#1a1a2e" opacity="0.8" />
-
-        {/* === SOLAR PANEL (angled on top) === */}
-        <g transform="rotate(-5, 170, 42)">
-          <rect x="112" y="22" width="118" height="22" rx="2" fill="#1a2a6e" />
-          {/* Panel cells */}
-          {[0,1,2,3,4,5,6].map(i => (
-            <line key={i} x1={118 + i * 16} y1="22" x2={118 + i * 16} y2="44" stroke="#2a3a8e" strokeWidth="1" />
-          ))}
-          <line x1="112" y1="33" x2="230" y2="33" stroke="#2a3a8e" strokeWidth="1" />
-          {/* Cell sheen */}
-          <rect x="112" y="22" width="118" height="8" rx="2" fill="white" opacity="0.08" />
-          {/* Panel border */}
-          <rect x="112" y="22" width="118" height="22" rx="2" fill="none" stroke="#3a4a9e" strokeWidth="1.5" />
+        {/* Lander deploy ramp the rover rolls out from (right side, fades after rollout) */}
+        <g className={clsx("rover-ramp", isDeploying ? "show" : "")}>
+          <polygon points="250,148 360,118 360,150 250,150" fill="#00f2ff" opacity="0.12" />
+          <line x1="250" y1="148" x2="360" y2="118" stroke="#00f2ff" strokeWidth="2" opacity="0.45" />
         </g>
 
-        {/* Panel mount strut */}
-        <rect x="162" y="38" width="6" height="8" fill="#8a8a8a" />
-        <rect x="174" y="38" width="6" height="8" fill="#8a8a8a" />
+        {/* ground contact shadow */}
+        <ellipse cx="170" cy="152" rx="150" ry="9" fill="#000000" opacity="0.28" />
 
-        {/* Camera mast */}
-        <rect x="155" y="28" width="4" height="16" fill="#9a9a9a" rx="1" />
-        <circle cx="157" cy="26" r="5" fill="#444" />
-        <circle cx="157" cy="26" r="3" fill="#1a1a2e" />
-        <circle cx="157" cy="26" r="1.5" fill="#00f2ff" opacity="0.8" />
+        {/* === Far (right-side) wheels — smaller, recede behind body === */}
+        <Wheel cx={96} cy={128} r={18} far spin={wheelsTurning} />
+        <Wheel cx={190} cy={128} r={18} far spin={wheelsTurning} />
+        <Wheel cx={284} cy={128} r={18} far spin={wheelsTurning} />
 
-        {/* === WHEELS (6 total, 3 per side shown from side) === */}
-        {/* Using layered circles for 3D wheel look */}
-        {/* Left side - front wheel */}
-        <circle cx="20" cy="118" r="18" fill="#555" />
-        <circle cx="20" cy="118" r="18" fill="none" stroke="#888" strokeWidth="4" />
-        <circle cx="20" cy="118" r="12" fill="#6a6a6a" />
-        <circle cx="20" cy="118" r="8" fill="#c87941" />
-        <circle cx="20" cy="118" r="4" fill="#a05a2a" />
-        {/* Treads */}
-        {[0,30,60,90,120,150,180,210,240,270,300,330].map(angle => (
-          <line
-            key={angle}
-            x1={20 + 14 * Math.cos(angle * Math.PI / 180)}
-            y1={118 + 14 * Math.sin(angle * Math.PI / 180)}
-            x2={20 + 18 * Math.cos(angle * Math.PI / 180)}
-            y2={118 + 18 * Math.sin(angle * Math.PI / 180)}
-            stroke="#333" strokeWidth="2"
-          />
-        ))}
+        {/* === Rocker-bogie suspension (silver articulated arms) === */}
+        <g stroke="#cfd4da" strokeLinecap="round" fill="none">
+          <line x1="170" y1="100" x2="170" y2="106" strokeWidth="6" />
+          <line x1="152" y1="100" x2="66" y2="130" strokeWidth="6" />
+          <line x1="152" y1="100" x2="208" y2="108" strokeWidth="6" />
+          <line x1="208" y1="108" x2="162" y2="130" strokeWidth="5" />
+          <line x1="208" y1="108" x2="258" y2="130" strokeWidth="5" />
+        </g>
+        <circle cx="170" cy="100" r="6" fill="#aeb4bc" stroke="#7d838b" strokeWidth="1.5" />
+        <circle cx="208" cy="108" r="4.5" fill="#aeb4bc" stroke="#7d838b" strokeWidth="1.5" />
 
-        {/* Left side - middle wheel */}
-        <circle cx="80" cy="120" r="18" fill="#555" />
-        <circle cx="80" cy="120" r="18" fill="none" stroke="#888" strokeWidth="4" />
-        <circle cx="80" cy="120" r="12" fill="#6a6a6a" />
-        <circle cx="80" cy="120" r="8" fill="#c87941" />
-        <circle cx="80" cy="120" r="4" fill="#a05a2a" />
-        {[0,30,60,90,120,150,180,210,240,270,300,330].map(angle => (
-          <line
-            key={angle}
-            x1={80 + 14 * Math.cos(angle * Math.PI / 180)}
-            y1={120 + 14 * Math.sin(angle * Math.PI / 180)}
-            x2={80 + 18 * Math.cos(angle * Math.PI / 180)}
-            y2={120 + 18 * Math.sin(angle * Math.PI / 180)}
-            stroke="#333" strokeWidth="2"
-          />
-        ))}
+        {/* === Main gold / brass body box (HADES warm-electronics chassis) === */}
+        <rect x="78" y="56" width="184" height="46" rx="4" fill="url(#goldBody)" stroke="#6e540f" strokeWidth="1.5" />
+        {/* foil seams */}
+        <rect x="78" y="56" width="184" height="11" rx="4" fill="#ffffff" opacity="0.16" />
+        <line x1="120" y1="56" x2="120" y2="102" stroke="#9a7a1e" strokeWidth="1" opacity="0.5" />
+        <line x1="206" y1="56" x2="206" y2="102" stroke="#9a7a1e" strokeWidth="1" opacity="0.5" />
+        {/* warm electronics box (left end) */}
+        <rect x="80" y="70" width="22" height="22" rx="2" fill="url(#goldFoil)" stroke="#6e540f" strokeWidth="1" />
+        {/* mission emblem */}
+        <circle cx="150" cy="80" r="12" fill="url(#emblem)" stroke="#f0d28a" strokeWidth="1.5" />
+        <circle cx="150" cy="80" r="5" fill="#3a1d0e" opacity="0.7" />
 
-        {/* Left side - rear wheel */}
-        <circle cx="160" cy="118" r="18" fill="#555" />
-        <circle cx="160" cy="118" r="18" fill="none" stroke="#888" strokeWidth="4" />
-        <circle cx="160" cy="118" r="12" fill="#6a6a6a" />
-        <circle cx="160" cy="118" r="8" fill="#c87941" />
-        <circle cx="160" cy="118" r="4" fill="#a05a2a" />
-        {[0,30,60,90,120,150,180,210,240,270,300,330].map(angle => (
-          <line
-            key={angle}
-            x1={160 + 14 * Math.cos(angle * Math.PI / 180)}
-            y1={118 + 14 * Math.sin(angle * Math.PI / 180)}
-            x2={160 + 18 * Math.cos(angle * Math.PI / 180)}
-            y2={118 + 18 * Math.sin(angle * Math.PI / 180)}
-            stroke="#333" strokeWidth="2"
-          />
-        ))}
+        {/* === Flat solar panel on top === */}
+        <g transform="rotate(-4 170 47)">
+          <rect x="62" y="40" width="216" height="16" rx="2" fill="url(#solar)" stroke="#d9b24c" strokeWidth="2" />
+          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+            <line key={i} x1={62 + i * 19.6} y1="40" x2={62 + i * 19.6} y2="56" stroke="#1c2a66" strokeWidth="1" opacity="0.8" />
+          ))}
+          <line x1="62" y1="48" x2="278" y2="48" stroke="#1c2a66" strokeWidth="1" opacity="0.8" />
+          <rect x="62" y="40" width="216" height="5" rx="2" fill="#ffffff" opacity="0.1" />
+        </g>
 
-        {/* Right side wheels (slightly behind, smaller for perspective) */}
-        <circle cx="180" cy="118" r="15" fill="#484848" />
-        <circle cx="180" cy="118" r="15" fill="none" stroke="#777" strokeWidth="3" />
-        <circle cx="180" cy="118" r="8" fill="#5e5e5e" />
-        <circle cx="180" cy="118" r="5" fill="#b06930" />
+        {/* === Near (left-side) wheels — larger, in front === */}
+        <Wheel cx={66} cy={132} r={24} spin={wheelsTurning} />
+        <Wheel cx={162} cy={132} r={24} spin={wheelsTurning} />
+        <Wheel cx={258} cy={132} r={24} spin={wheelsTurning} />
 
-        <circle cx="260" cy="120" r="15" fill="#484848" />
-        <circle cx="260" cy="120" r="15" fill="none" stroke="#777" strokeWidth="3" />
-        <circle cx="260" cy="120" r="8" fill="#5e5e5e" />
-        <circle cx="260" cy="120" r="5" fill="#b06930" />
-
-        <circle cx="320" cy="118" r="15" fill="#484848" />
-        <circle cx="320" cy="118" r="15" fill="none" stroke="#777" strokeWidth="3" />
-        <circle cx="320" cy="118" r="8" fill="#5e5e5e" />
-        <circle cx="320" cy="118" r="5" fill="#b06930" />
-
-        {/* Ground line */}
-        <line x1="0" y1="136" x2="340" y2="136" stroke="#ff4d00" strokeWidth="1" opacity="0.4" strokeDasharray="6,4" />
-
-        {/* Dust particles when driving */}
-        {isDriving && (
+        {/* Dust kicked up behind the wheels while moving */}
+        {wheelsTurning && (
           <>
-            <circle cx="10" cy="132" r="2" fill="#c87941" opacity="0.6" className="animate-ping" />
-            <circle cx="30" cy="130" r="1.5" fill="#c87941" opacity="0.4" />
+            <circle cx="296" cy="146" r="3" fill="#d99a5a" opacity="0.55" className="animate-ping" />
+            <circle cx="312" cy="142" r="2" fill="#c87941" opacity="0.4" className="animate-ping" />
+            <circle cx="284" cy="148" r="2.2" fill="#e0a868" opacity="0.5" />
           </>
         )}
       </svg>

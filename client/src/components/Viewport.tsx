@@ -30,8 +30,8 @@ export function Viewport({ currentPhase, isActive, isAborted }: ViewportProps) {
         loop
         className={clsx(
           "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
-          (!isActive || isAborted) && "opacity-30 grayscale",
-          isActive && "opacity-80"
+          (!isActive || isAborted) && "opacity-60",
+          isActive && "opacity-90"
         )}
       />
 
