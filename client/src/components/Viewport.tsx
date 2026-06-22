@@ -2,7 +2,6 @@ import edlVideo from '@assets/Untitled_design_1775393203432.mp4';
 import { ScanLine } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Phase } from '@/hooks/use-simulation';
-import { Rover3D } from './Rover3D';
 
 interface ViewportProps {
   currentPhase: Phase;
@@ -10,11 +9,7 @@ interface ViewportProps {
   isAborted: boolean;
 }
 
-const ROVER_PHASES: Phase[] = ["ROVER", "DEPLOY", "TOUCH"];
-
 export function Viewport({ currentPhase, isActive, isAborted }: ViewportProps) {
-  const showRover = ROVER_PHASES.includes(currentPhase) && isActive && !isAborted;
-
   return (
     <div className={clsx(
       "relative w-full h-full rounded-xl overflow-hidden glass-panel",
@@ -72,9 +67,6 @@ export function Viewport({ currentPhase, isActive, isAborted }: ViewportProps) {
           <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-secondary/50" />
         </>
       )}
-
-      {/* 3D Rover — rolls in from the airbag at ROVER/DEPLOY/TOUCH phases */}
-      <Rover3D visible={showRover} phase={currentPhase} />
 
       {isAborted && (
         <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 backdrop-blur-[2px]">
